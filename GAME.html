@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="hy">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Այո, թե Ոչ — Վիկտորինա</title>
+  <style>
+    :root { --bg:#11131d; --card:#222637; --ink:#f5f1e8; --muted:#b9b4a7; --line:#404760; --gold:#ffc857; --violet:#8267e8; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui, "Noto Sans Armenian", sans-serif; }
+    .wrap { max-width:920px; margin:auto; padding:28px 18px 60px; }
+    h1 { font-size:42px; margin:3px 0; }
+    .tag { color:var(--gold); font-size:12px; font-weight:800; letter-spacing:1px; }
+    .note, .hint { color:var(--muted); }
+    .card { margin-top:18px; padding:22px; background:var(--card); border:1px solid var(--line); border-radius:16px; }
+    .players, .controls { display:flex; flex-wrap:wrap; gap:9px; align-items:center; }
+    .player, .tabs button, .answer, .statement, .btn { border-radius:9px; font:inherit; font-weight:750; cursor:pointer; }
+    .player, .tabs button, .answer, .statement { padding:10px; color:var(--ink); background:#151824; border:1px solid var(--line); }
+    .player.active, .tabs button.active, .answer.selected, .statement.selected { color:white; background:var(--violet); border-color:var(--violet); }
+    .player b { margin-left:8px; color:var(--gold); }
+    .btn { padding:10px 14px; color:#1a1720; border:0; background:var(--gold); }
+    .secondary { color:var(--ink); border:1px solid var(--line); background:transparent; }
+    input, select { padding:10px; color:var(--ink); font:inherit; background:#141722; border:1px solid var(--line); border-radius:9px; }
+    .tabs { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-top:20px; }
+    .tabs button { color:var(--muted); }
+    .progress { height:8px; margin:16px 0; overflow:hidden; background:#121520; border-radius:8px; }
+    .progress i { display:block; height:100%; background:var(--gold); }
+    .question { min-height:48px; font-size:27px; font-weight:750; }
+    .answers { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .answer { padding:22px; font-size:22px; }
+    .statement { display:block; width:100%; margin:7px 0; text-align:left; }
+    .timer { margin-left:auto; color:var(--gold); font-weight:800; }
+    .risk { margin-top:15px; padding:12px; background:#35283b; border-radius:9px; }
+    .hidden { display:none; }
+    .editor { margin-top:25px; }
+    .editor summary { color:var(--gold); font-weight:800; cursor:pointer; }
+    .edit { display:grid; grid-template-columns:1fr 160px; gap:8px; margin:9px 0; }
+    .edit input, .edit select { width:100%; }
+    @media (max-width:560px) { .tabs { grid-template-columns:1fr 1fr; } .edit { grid-template-columns:1fr; } .timer { margin-left:0; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="tag">ԻՆՏԵՐԱԿՏԻՎ ՎԻԿՏՈՐԻՆԱ</div>
+    <h1>Այո, թե Ոչ</h1>
+    <p class="note">4 փուլ · առավելագույն ընդհանուր միավորը հաղթում է</p>
+
+    <section class="card">
+      <div class="tag">ՄԱՍՆԱԿԻՑՆԵՐ</div>
+      <div class="players" id="players"></div>
+      <div class="players" style="margin-top:12px">
+        <input id="name" placeholder="Նոր մասնակցի անունը">
+        <button class="btn" id="add">Ավելացնել</button>
+        <button class="btn secondary" id="remove">Հեռացնել ընտրվածին</button>
+      </div>
+      <p class="note">Ընտրեք մասնակցին՝ նրա հերթն ու միավորները գրանցելու համար։</p>
+    </section>
+
+    <nav class="tabs" id="tabs"></nav>
+
+    <section class="card">
+      <div class="tag" id="phaseTag"></div>
+      <h2 id="title"></h2>
+      <p class="note" id="meta"></p>
+      <div class="progress"><i id="bar"></i></div>
+      <div class="tag" id="count"></div>
+      <div class="question" id="question"></div>
+      <div id="choices"></div>
+      <div class="risk hidden" id="risk">
+        <label><input id="double" type="checkbox"> Double or Nothing — ռիսկի դիմել վերջին հարցում</label>
+      </div>
+      <div class="controls" style="margin-top:20px">
+        <button class="btn secondary" id="show">Ցույց տալ պատասխանը</button>
+        <button class="btn" id="next">Հաջորդ հարցը</button>
+        <span class="timer" id="timer"></span>
+      </div>
+      <p class="hint" id="hint"></p>
+    </section>
+
+    <details class="editor">
+      <summary>Լրացնել հարցերն ու պատասխանները</summary>
+      <p class="note">Տվյալները պահպանվում են բրաուզերում։ 2-րդ փուլում պնդումները բաժանեք | նշանով։</p>
+      <div id="editor"></div>
+      <button class="btn" id="save">Պահպանել հարցերը</button>
+    </details>
+  </main>
+
+  <script>
+    const phases = [
+      { title: 'Արագ փաստեր', meta: '10 հարց · +1 · 10 վայրկյան', count: 10, time: 10, type: 'yes-no' },
+      { title: '3 փաստ, 1 սուտ', meta: '7 հարց · +2 · 15 վայրկյան', count: 7, time: 15, type: 'lie' },
+      { title: 'Աճող ռիսկ', meta: '5 հարց · ճիշտ՝ +1…+5, սխալ՝ −1…−5 · 12 վայրկյան', count: 5, time: 12, type: 'risk' },
+      { title: 'Վստահիր ինտուիցիայիդ', meta: '5 հարց · պահել՝ ±2, փոխել՝ ±1 · 10 վայրկյան', count: 5, time: 10, type: 'intuition' }
+    ];
+
+    const $ = id => document.getElementById(id);
+    const storageKey = 'ayo-te-voch-game-v4';
+    const blankQuestions = () => phases.map(phase => Array.from({ length: phase.count }, () => ({ q: '', a: '' })));
+
+    let state = { questions: blankQuestions(), players: [], activePlayer: 0 };
+    try { state = { ...state, ...JSON.parse(localStorage.getItem(storageKey)) }; } catch (error) {}
+
+    let phaseIndex = 0;
+    let questionIndex = 0;
+    let phasePoints = 0;
+    let answer = null;
+    let firstAnswer = null;
+    let timer;
+    let seconds;
+
+    function saveState() { localStorage.setItem(storageKey, JSON.stringify(state)); }
+    function activePlayer() { return state.players[state.activePlayer]; }
+
+    function renderPlayers() {
+      const list = state.players;
+      $('players').innerHTML = list.length
+        ? list.map((player, index) => `<button class="player ${index === state.activePlayer ? 'active' : ''}" data-player="${index}">${player.name}<b>${player.score}</b></button>`).join('')
+        : '<span class="note">Դեռ մասնակից չկա։</span>';
+
+      document.querySelectorAll('[data-player]').forEach(button => {
+        button.onclick = () => {
+          state.activePlayer = Number(button.dataset.player);
+          phasePoints = 0;
+          saveState();
+          renderPlayers();
+        };
+      });
+    }
+
+    function addPlayer() {
+      const name = $('name').value.trim();
+      if (!name) return;
+      state.players.push({ name, score: 0 });
+      state.activePlayer = state.players.length - 1;
+      $('name').value = '';
+      saveState();
+      renderPlayers();
+    }
+
+    function removePlayer() {
+      const player = activePlayer();
+      if (!player) return;
+      if (!confirm(`Հեռացնե՞լ «${player.name}»-ին և նրա միավորները։`)) return;
+      state.players.splice(state.activePlayer, 1);
+      state.activePlayer = Math.max(0, state.activePlayer - 1);
+      saveState();
+      renderPlayers();
+      $('hint').textContent = 'Մասնակիցը հեռացված է։';
+    }
+
+    function renderQuestionEditor() {
+      let html = '';
+      phases.forEach((phase, phaseNumber) => {
+        html += `<h3>${phaseNumber + 1}. ${phase.title}</h3>`;
+        state.questions[phaseNumber].forEach((question, number) => {
+          const options = phase.type === 'lie'
+            ? '<option value="1">1-ին պնդումը սուտ է</option><option value="2">2-րդ պնդումը սուտ է</option><option value="3">3-րդ պնդումը սուտ է</option>'
+            : '<option value="Այո">Այո</option><option value="Ոչ">Ոչ</option>';
+          html += `<div class="edit"><input data-phase="${phaseNumber}" data-question="${number}" data-field="q" value="${question.q}" placeholder="${number + 1}. հարցը / պնդումները"><select data-phase="${phaseNumber}" data-question="${number}" data-field="a"><option value="">Ճիշտ պատասխան…</option>${options}</select></div>`;
+        });
+      });
+      $('editor').innerHTML = html;
+      document.querySelectorAll('[data-field="a"]').forEach(input => {
+        input.value = state.questions[input.dataset.phase][input.dataset.question].a;
+      });
+    }
+
+    function startTimer() {
+      clearInterval(timer);
+      seconds = phases[phaseIndex].time;
+      $('timer').textContent = `⏱ ${seconds}`;
+      timer = setInterval(() => {
+        seconds--;
+        $('timer').textContent = `⏱ ${seconds}`;
+        if (seconds <= 0) {
+          clearInterval(timer);
+          $('hint').textContent = 'Ժամանակն ավարտվեց։';
+        }
+      }, 1000);
+    }
+
+    function selectAnswer(value) {
+      if (phases[phaseIndex].type === 'intuition' && !firstAnswer) {
+        firstAnswer = value;
+        $('hint').textContent = `Նախնական կանխատեսումը՝ ${value}։ Կարող եք այն փոխել։`;
+      }
+      answer = value;
+      document.querySelectorAll('[data-answer]').forEach(button => button.classList.toggle('selected', button.dataset.answer === value));
+    }
+
+    function renderGame() {
+      const phase = phases[phaseIndex];
+      const currentQuestion = state.questions[phaseIndex][questionIndex];
+      answer = null;
+      firstAnswer = null;
+      $('phaseTag').textContent = `ՓՈՒԼ ${phaseIndex + 1}`;
+      $('title').textContent = phase.title;
+      $('meta').textContent = phase.meta;
+      $('count').textContent = `ՀԱՐՑ ${questionIndex + 1} / ${phase.count}`;
+      $('bar').style.width = `${(questionIndex + 1) / phase.count * 100}%`;
+      $('question').textContent = currentQuestion.q || 'Հարցը դեռ լրացված չէ';
+      $('hint').textContent = '';
+      $('risk').classList.toggle('hidden', questionIndex !== phase.count - 1);
+      $('double').checked = false;
+
+      $('choices').innerHTML = phase.type === 'lie'
+        ? (currentQuestion.q || '').split('|').map((statement, index) => `<button class="statement" data-answer="${index + 1}">${index + 1}. ${statement.trim() || 'Պնդում'}</button>`).join('')
+        : '<div class="answers"><button class="answer" data-answer="Այո">Այո</button><button class="answer" data-answer="Ոչ">Ոչ</button></div>';
+
+      document.querySelectorAll('[data-answer]').forEach(button => button.onclick = () => selectAnswer(button.dataset.answer));
+      startTimer();
+    }
+
+    function nextQuestion() {
+      const player = activePlayer();
+      if (!player) { $('hint').textContent = 'Սկզբում ավելացրեք մասնակից։'; return; }
+      clearInterval(timer);
+      const phase = phases[phaseIndex];
+      const correct = answer && answer === state.questions[phaseIndex][questionIndex].a;
+      let points = phase.type === 'lie' ? (correct ? 2 : 0) : phase.type === 'risk' ? (correct ? questionIndex + 1 : -(questionIndex + 1)) : phase.type === 'intuition' ? (correct ? (firstAnswer === answer ? 2 : 1) : (firstAnswer === answer ? -2 : -1)) : (correct ? 1 : 0);
+      phasePoints += points;
+      if (questionIndex === phase.count - 1 && $('double').checked) phasePoints = correct ? phasePoints * 2 : 0;
+      if (questionIndex < phase.count - 1) { questionIndex++; renderGame(); return; }
+      player.score += phasePoints;
+      saveState();
+      renderPlayers();
+      $('hint').textContent = `${player.name} — փուլի արդյունք՝ ${phasePoints} միավոր`;
+      setTimeout(() => { if (phaseIndex < 3) { phaseIndex++; questionIndex = 0; phasePoints = 0; renderGame(); } }, 1300);
+    }
+
+    $('add').onclick = addPlayer;
+    $('remove').onclick = removePlayer;
+    $('name').onkeydown = event => { if (event.key === 'Enter') addPlayer(); };
+    $('save').onclick = () => {
+      document.querySelectorAll('[data-field]').forEach(input => state.questions[input.dataset.phase][input.dataset.question][input.dataset.field] = input.value);
+      saveState();
+      renderQuestionEditor();
+      $('hint').textContent = 'Հարցերը պահպանված են։';
+    };
+    $('show').onclick = () => { $('hint').textContent = state.questions[phaseIndex][questionIndex].a ? `Ճիշտ պատասխան՝ ${state.questions[phaseIndex][questionIndex].a}` : 'Ճիշտ պատասխանը դեռ լրացված չէ։'; };
+    $('next').onclick = nextQuestion;
+    $('tabs').innerHTML = phases.map((phase, index) => `<button class="${index === 0 ? 'active' : ''}" data-tab="${index}">${index + 1}. ${phase.title}</button>`).join('');
+    document.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => { phaseIndex = Number(button.dataset.tab); questionIndex = 0; phasePoints = 0; document.querySelectorAll('[data-tab]').forEach(item => item.classList.toggle('active', item === button)); renderGame(); });
+    renderQuestionEditor();
+    renderPlayers();
+    renderGame();
+  </script>
+</body>
+</html>
