@@ -5,76 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Այո, թե Ոչ — Վիկտորինա</title>
   <style>
-    :root { --bg:#11131d; --card:#222637; --ink:#f5f1e8; --muted:#b9b4a7; --line:#404760; --gold:#ffc857; --violet:#8267e8; }
+    :root { --bg:#11131d; --card:#222637; --ink:#f5f1e8; --muted:#b9b4a7; --line:#404760; --gold:#ffc857; --violet:#8267e8; --green:#3ddc84; --red:#ff6b6b; }
     * { box-sizing: border-box; }
     body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui, "Noto Sans Armenian", sans-serif; }
-    .wrap { max-width:920px; margin:auto; padding:28px 18px 60px; }
+    .wrap { max-width:960px; margin:auto; padding:28px 18px 60px; }
     h1 { font-size:42px; margin:3px 0; }
     .tag { color:var(--gold); font-size:12px; font-weight:800; letter-spacing:1px; }
     .note, .hint { color:var(--muted); }
     .card { margin-top:18px; padding:22px; background:var(--card); border:1px solid var(--line); border-radius:16px; }
     .players, .controls { display:flex; flex-wrap:wrap; gap:9px; align-items:center; }
-    .player, .tabs button, .answer, .statement, .btn { border-radius:9px; font:inherit; font-weight:750; cursor:pointer; }
-    .player, .tabs button, .answer, .statement { padding:10px; color:var(--ink); background:#151824; border:1px solid var(--line); }
-    .player.active, .tabs button.active, .answer.selected, .statement.selected { color:white; background:var(--violet); border-color:var(--violet); }
-    .player b { margin-left:8px; color:var(--gold); }
+    .player { display:flex; align-items:center; gap:8px; padding:8px 8px 8px 14px; border-radius:9px; background:#151824; border:1px solid var(--line); }
+    .player b { color:var(--gold); }
+    .player .x { cursor:pointer; color:var(--muted); border:1px solid var(--line); background:transparent; border-radius:7px; padding:4px 9px; font-weight:800; }
+    .player .x:hover { color:var(--red); border-color:var(--red); }
+    .tabs button, .btn { border-radius:9px; font:inherit; font-weight:750; cursor:pointer; }
+    .tabs button { padding:10px; color:var(--muted); background:#151824; border:1px solid var(--line); }
+    .tabs button.active { color:white; background:var(--violet); border-color:var(--violet); }
     .btn { padding:10px 14px; color:#1a1720; border:0; background:var(--gold); }
+    .btn:disabled { opacity:.4; cursor:not-allowed; }
     .secondary { color:var(--ink); border:1px solid var(--line); background:transparent; }
+    .btn-danger { color:white; background:var(--red); }
+    .btn-success { color:#0c1f14; background:var(--green); }
     input, select { padding:10px; color:var(--ink); font:inherit; background:#141722; border:1px solid var(--line); border-radius:9px; }
     .tabs { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-top:20px; }
-    .tabs button { color:var(--muted); }
     .progress { height:8px; margin:16px 0; overflow:hidden; background:#121520; border-radius:8px; }
     .progress i { display:block; height:100%; background:var(--gold); }
     .question { min-height:48px; font-size:27px; font-weight:750; }
-    .answers { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .answer { padding:22px; font-size:22px; }
-    .statement { display:block; width:100%; margin:7px 0; text-align:left; }
+    .question.veiled { color:var(--muted); font-style:italic; font-size:20px; }
     .timer { margin-left:auto; color:var(--gold); font-weight:800; }
-    .risk { margin-top:15px; padding:12px; background:#35283b; border-radius:9px; }
     .hidden { display:none; }
     .editor { margin-top:25px; }
     .editor summary { color:var(--gold); font-weight:800; cursor:pointer; }
     .edit { display:grid; grid-template-columns:1fr 160px; gap:8px; margin:9px 0; }
     .edit input, .edit select { width:100%; }
-    @media (max-width:560px) { .tabs { grid-template-columns:1fr 1fr; } .edit { grid-template-columns:1fr; } .timer { margin-left:0; } }
+
+    /* per-team answer rows */
+    .teams { margin-top:20px; display:flex; flex-direction:column; gap:10px; }
+    .team-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px; background:#181c2a; border:1px solid var(--line); border-radius:12px; }
+    .team-row.correct { border-color:var(--green); background:#16281f; }
+    .team-row.incorrect { border-color:var(--red); background:#2a1a1c; }
+    .team-name { min-width:130px; font-weight:800; }
+    .team-name b { display:block; color:var(--gold); font-size:13px; font-weight:800; }
+    .team-options { display:flex; flex-wrap:wrap; gap:6px; flex:1; }
+    .opt { padding:8px 14px; border-radius:8px; font:inherit; font-weight:700; cursor:pointer; color:var(--ink); background:#141722; border:1px solid var(--line); }
+    .opt.chosen { color:white; background:var(--violet); border-color:var(--violet); }
+    .opt:disabled { cursor:default; }
+    .team-row.correct .opt.chosen { background:var(--green); border-color:var(--green); color:#0c1f14; }
+    .team-row.incorrect .opt.chosen { background:var(--red); border-color:var(--red); color:#2a0d0d; }
+    .delta { font-weight:800; min-width:52px; text-align:right; }
+    .delta.pos { color:var(--green); }
+    .delta.neg { color:var(--red); }
+    .dbl { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); }
+
+    .leaderboard { list-style:none; margin:10px 0 0; padding:0; }
+    .leaderboard li { display:flex; justify-content:space-between; padding:10px 14px; margin-bottom:6px; background:#181c2a; border:1px solid var(--line); border-radius:10px; }
+    .leaderboard li:first-child { border-color:var(--gold); }
+    .leaderboard b { color:var(--gold); }
+
+    @media (max-width:560px) { .tabs { grid-template-columns:1fr 1fr; } .edit { grid-template-columns:1fr; } .timer { margin-left:0; } .team-name { min-width:100%; } }
   </style>
 </head>
 <body>
   <main class="wrap">
-    <div class="tag">ԻՆՏԵՐԱԿՏԻՎ ՎԻԿՏՈՐԻՆԱ</div>
+    <div class="tag">ԻՆՏԵՐԱԿՏԻՎ ՎԻԿՏՈՐԻՆԱ · ԲՈԼՈՐ ԹԻՄԵՐԸ՝ ՄԻԱՍԻՆ</div>
     <h1>Այո, թե Ոչ</h1>
-    <p class="note">4 փուլ · առավելագույն ընդհանուր միավորը հաղթում է</p>
+    <p class="note">4 փուլ · բոլոր թիմերը պատասխանում են միևնույն հարցին միաժամանակ · առավելագույն ընդհանուր միավորը հաղթում է</p>
 
     <section class="card">
-      <div class="tag">ՄԱՍՆԱԿԻՑՆԵՐ</div>
+      <div class="tag">ԹԻՄԵՐ / ՄԱՍՆԱԿԻՑՆԵՐ</div>
       <div class="players" id="players"></div>
       <div class="players" style="margin-top:12px">
-        <input id="name" placeholder="Նոր մասնակցի անունը">
+        <input id="name" placeholder="Նոր թիմի/մասնակցի անունը">
         <button class="btn" id="add">Ավելացնել</button>
-        <button class="btn secondary" id="remove">Հեռացնել ընտրվածին</button>
       </div>
-      <p class="note">Ընտրեք մասնակցին՝ նրա հերթն ու միավորները գրանցելու համար։</p>
+      <p class="note">Ավելացրեք բոլոր թիմերին սկզբում. խաղի ընթացքում բոլորը պատասխանում են միասին, նույն հարցին։</p>
+      <div class="controls" style="margin-top:12px">
+        <button class="btn btn-danger" id="fullReset">Զրոյացնել ամեն ինչ (հեռացնել բոլոր թիմերը)</button>
+      </div>
     </section>
 
     <nav class="tabs" id="tabs"></nav>
 
-    <section class="card">
+    <section class="card" id="gameCard">
       <div class="tag" id="phaseTag"></div>
       <h2 id="title"></h2>
       <p class="note" id="meta"></p>
       <div class="progress"><i id="bar"></i></div>
       <div class="tag" id="count"></div>
       <div class="question" id="question"></div>
-      <div id="choices"></div>
-      <div class="risk hidden" id="risk">
-        <label><input id="double" type="checkbox"> Double or Nothing — ռիսկի դիմել վերջին հարցում</label>
-      </div>
+
+      <div class="teams" id="teams"></div>
+
       <div class="controls" style="margin-top:20px">
-        <button class="btn secondary" id="show">Ցույց տալ պատասխանը</button>
-        <button class="btn" id="next">Հաջորդ հարցը</button>
+        <button class="btn" id="revealPrediction">Ցույց տալ հարցը</button>
+        <button class="btn btn-success" id="reveal">Ցույց տալ պատասխանը և հաշվել միավորները</button>
+        <button class="btn" id="next" disabled>Հաջորդ հարցը</button>
         <span class="timer" id="timer"></span>
       </div>
       <p class="hint" id="hint"></p>
+    </section>
+
+    <section class="card hidden" id="finalCard">
+      <div class="tag">ԱՐԴՅՈՒՆՔ</div>
+      <h2>🏆 Խաղն ավարտված է</h2>
+      <ol class="leaderboard" id="leaderboard"></ol>
+      <div class="controls" style="margin-top:16px">
+        <button class="btn btn-danger" id="restart">Խաղալ նորից (զրոյացնել միավորները)</button>
+      </div>
     </section>
 
     <details class="editor">
@@ -94,35 +131,65 @@
     ];
 
     const $ = id => document.getElementById(id);
-    const storageKey = 'ayo-te-voch-game-v4';
+    const storageKey = 'ayo-te-voch-game-team-v1';
     const blankQuestions = () => phases.map(phase => Array.from({ length: phase.count }, () => ({ q: '', a: '' })));
 
-    let state = { questions: blankQuestions(), players: [], activePlayer: 0 };
-    try { state = { ...state, ...JSON.parse(localStorage.getItem(storageKey)) }; } catch (error) {}
+    // Persisted state: players (with score) and the question bank.
+    let state = { questions: blankQuestions(), players: [] };
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey));
+      if (saved) state = { ...state, ...saved };
+    } catch (error) {}
 
+    // Shared progress — everyone is always on the same phase/question.
     let phaseIndex = 0;
     let questionIndex = 0;
-    let phasePoints = 0;
-    let answer = null;
-    let firstAnswer = null;
+
+    // Per-phase running total for each player (added to their real score only
+    // once the phase's last question is scored, so Double or Nothing can act on it).
+    let accum = state.players.map(() => 0);
+
+    // Per-question round state (reset every time a new question is shown).
+    let predictions = {};   // intuition phase: player index -> locked-in first guess
+    let answers = {};       // player index -> final answer for the current question
+    let doubles = {};       // player index -> bool, only meaningful on a phase's last question
+    let questionShown = true; // for intuition phase: false until "Ցույց տալ հարցը" is pressed
+    let revealed = false;
+
     let timer;
     let seconds;
 
     function saveState() { localStorage.setItem(storageKey, JSON.stringify(state)); }
-    function activePlayer() { return state.players[state.activePlayer]; }
+
+    function resetRound() {
+      predictions = {};
+      answers = {};
+      doubles = {};
+      questionShown = phases[phaseIndex].type !== 'intuition';
+      revealed = false;
+    }
+
+    function resetPhaseAccum() {
+      accum = state.players.map(() => 0);
+    }
 
     function renderPlayers() {
       const list = state.players;
       $('players').innerHTML = list.length
-        ? list.map((player, index) => `<button class="player ${index === state.activePlayer ? 'active' : ''}" data-player="${index}">${player.name}<b>${player.score}</b></button>`).join('')
-        : '<span class="note">Դեռ մասնակից չկա։</span>';
+        ? list.map((player, index) => `<div class="player">${player.name}<b>${player.score}</b><button class="x" data-remove="${index}" title="Հեռացնել">✕</button></div>`).join('')
+        : '<span class="note">Դեռ թիմ չկա։</span>';
 
-      document.querySelectorAll('[data-player]').forEach(button => {
+      document.querySelectorAll('[data-remove]').forEach(button => {
         button.onclick = () => {
-          state.activePlayer = Number(button.dataset.player);
-          phasePoints = 0;
+          const index = Number(button.dataset.remove);
+          const player = state.players[index];
+          if (!confirm(`Հեռացնե՞լ «${player.name}»-ին և նրա միավորները։`)) return;
+          state.players.splice(index, 1);
+          accum.splice(index, 1);
+          delete predictions[index]; delete answers[index]; delete doubles[index];
           saveState();
           renderPlayers();
+          renderTeams();
         };
       });
     }
@@ -131,21 +198,11 @@
       const name = $('name').value.trim();
       if (!name) return;
       state.players.push({ name, score: 0 });
-      state.activePlayer = state.players.length - 1;
+      accum.push(0);
       $('name').value = '';
       saveState();
       renderPlayers();
-    }
-
-    function removePlayer() {
-      const player = activePlayer();
-      if (!player) return;
-      if (!confirm(`Հեռացնե՞լ «${player.name}»-ին և նրա միավորները։`)) return;
-      state.players.splice(state.activePlayer, 1);
-      state.activePlayer = Math.max(0, state.activePlayer - 1);
-      saveState();
-      renderPlayers();
-      $('hint').textContent = 'Մասնակիցը հեռացված է։';
+      renderTeams();
     }
 
     function renderQuestionEditor() {
@@ -174,62 +231,190 @@
         $('timer').textContent = `⏱ ${seconds}`;
         if (seconds <= 0) {
           clearInterval(timer);
-          $('hint').textContent = 'Ժամանակն ավարտվեց։';
+          $('hint').textContent = 'Ժամանակն ավարտվեց։ Ցույց տվեք պատասխանը։';
         }
       }, 1000);
     }
 
-    function selectAnswer(value) {
-      if (phases[phaseIndex].type === 'intuition' && !firstAnswer) {
-        firstAnswer = value;
-        $('hint').textContent = `Նախնական կանխատեսումը՝ ${value}։ Կարող եք այն փոխել։`;
-      }
-      answer = value;
-      document.querySelectorAll('[data-answer]').forEach(button => button.classList.toggle('selected', button.dataset.answer === value));
+    function optionList(phase, q) {
+      if (phase.type !== 'lie') return [{ value: 'Այո', label: 'Այո' }, { value: 'Ոչ', label: 'Ոչ' }];
+      const parts = (q.q || '').split('|').map(s => s.trim());
+      while (parts.length < 3) parts.push('');
+      return parts.map((statement, index) => ({ value: String(index + 1), label: `${index + 1}. ${statement || 'Պնդում'}` }));
+    }
+
+    function renderTeams() {
+      const phase = phases[phaseIndex];
+      const q = state.questions[phaseIndex][questionIndex];
+      const isLastOfPhase = questionIndex === phase.count - 1;
+      const predicting = phase.type === 'intuition' && !questionShown;
+      const options = optionList(phase, q);
+
+      $('teams').innerHTML = state.players.map((player, i) => {
+        const chosen = predicting ? predictions[i] : answers[i];
+        const optsHtml = options.map(option =>
+          `<button class="opt ${chosen === option.value ? 'chosen' : ''}" ${revealed ? 'disabled' : ''} data-player="${i}" data-value="${option.value}">${option.label}</button>`
+        ).join('');
+
+        let rowClass = '';
+        let deltaHtml = '';
+        if (revealed && !predicting) {
+          const answered = answers[i] !== undefined;
+          const correct = answered && answers[i] === q.a;
+          rowClass = correct ? 'correct' : 'incorrect';
+          const delta = player._lastDelta || 0;
+          deltaHtml = `<span class="delta ${delta > 0 ? 'pos' : delta < 0 ? 'neg' : ''}">${delta > 0 ? '+' : ''}${delta}${answered ? '' : ' (առանց պատասխանի)'}</span>`;
+        }
+
+        const dblHtml = (isLastOfPhase && !predicting && !revealed)
+          ? `<label class="dbl"><input type="checkbox" data-double="${i}" ${doubles[i] ? 'checked' : ''}> Double or Nothing</label>`
+          : '';
+
+        return `<div class="team-row ${rowClass}">
+          <div class="team-name">${player.name}<b>${player.score}</b></div>
+          <div class="team-options">${optsHtml}</div>
+          ${dblHtml}
+          ${deltaHtml}
+          <button class="x" data-remove="${i}" title="Հեռացնել թիմը">✕</button>
+        </div>`;
+      }).join('') || '<p class="note">Ավելացրեք գոնե մեկ թիմ խաղը սկսելու համար։</p>';
+
+      document.querySelectorAll('[data-remove]').forEach(button => {
+        button.onclick = () => {
+          const i = Number(button.dataset.remove);
+          const player = state.players[i];
+          if (!confirm(`Հեռացնե՞լ «${player.name}»-ին և նրա միավորները։`)) return;
+          state.players.splice(i, 1);
+          accum.splice(i, 1);
+          delete predictions[i]; delete answers[i]; delete doubles[i];
+          saveState();
+          renderPlayers();
+          renderTeams();
+        };
+      });
+
+      document.querySelectorAll('[data-player]').forEach(button => {
+        button.onclick = () => {
+          if (revealed) return;
+          const i = Number(button.dataset.player);
+          const value = button.dataset.value;
+          if (predicting) predictions[i] = value;
+          else answers[i] = value;
+          renderTeams();
+        };
+      });
+
+      document.querySelectorAll('[data-double]').forEach(input => {
+        input.onchange = () => { doubles[Number(input.dataset.double)] = input.checked; };
+      });
+
+      $('revealPrediction').classList.toggle('hidden', !predicting);
+      $('reveal').classList.toggle('hidden', predicting);
+      $('next').disabled = !revealed;
     }
 
     function renderGame() {
       const phase = phases[phaseIndex];
-      const currentQuestion = state.questions[phaseIndex][questionIndex];
-      answer = null;
-      firstAnswer = null;
+      const q = state.questions[phaseIndex][questionIndex];
       $('phaseTag').textContent = `ՓՈՒԼ ${phaseIndex + 1}`;
       $('title').textContent = phase.title;
       $('meta').textContent = phase.meta;
       $('count').textContent = `ՀԱՐՑ ${questionIndex + 1} / ${phase.count}`;
       $('bar').style.width = `${(questionIndex + 1) / phase.count * 100}%`;
-      $('question').textContent = currentQuestion.q || 'Հարցը դեռ լրացված չէ';
+
+      const predicting = phase.type === 'intuition' && !questionShown;
+      const questionEl = $('question');
+      if (predicting) {
+        questionEl.textContent = '🔮 Յուրաքանչյուր թիմ կանխատեսում է իր պատասխանը, նախքան հարցը լսելը';
+        questionEl.classList.add('veiled');
+      } else {
+        questionEl.textContent = q.q || 'Հարցը դեռ լրացված չէ';
+        questionEl.classList.remove('veiled');
+      }
+
       $('hint').textContent = '';
-      $('risk').classList.toggle('hidden', questionIndex !== phase.count - 1);
-      $('double').checked = false;
-
-      $('choices').innerHTML = phase.type === 'lie'
-        ? (currentQuestion.q || '').split('|').map((statement, index) => `<button class="statement" data-answer="${index + 1}">${index + 1}. ${statement.trim() || 'Պնդում'}</button>`).join('')
-        : '<div class="answers"><button class="answer" data-answer="Այո">Այո</button><button class="answer" data-answer="Ոչ">Ոչ</button></div>';
-
-      document.querySelectorAll('[data-answer]').forEach(button => button.onclick = () => selectAnswer(button.dataset.answer));
+      renderTeams();
       startTimer();
     }
 
-    function nextQuestion() {
-      const player = activePlayer();
-      if (!player) { $('hint').textContent = 'Սկզբում ավելացրեք մասնակից։'; return; }
-      clearInterval(timer);
+    function pointsFor(phase, correct, kept) {
+      if (phase.type === 'lie') return correct ? 2 : 0;
+      if (phase.type === 'risk') return correct ? (questionIndex + 1) : -(questionIndex + 1);
+      if (phase.type === 'intuition') return correct ? (kept ? 2 : 1) : (kept ? -2 : -1);
+      return correct ? 1 : 0; // yes-no
+    }
+
+    function reveal() {
       const phase = phases[phaseIndex];
-      const correct = answer && answer === state.questions[phaseIndex][questionIndex].a;
-      let points = phase.type === 'lie' ? (correct ? 2 : 0) : phase.type === 'risk' ? (correct ? questionIndex + 1 : -(questionIndex + 1)) : phase.type === 'intuition' ? (correct ? (firstAnswer === answer ? 2 : 1) : (firstAnswer === answer ? -2 : -1)) : (correct ? 1 : 0);
-      phasePoints += points;
-      if (questionIndex === phase.count - 1 && $('double').checked) phasePoints = correct ? phasePoints * 2 : 0;
-      if (questionIndex < phase.count - 1) { questionIndex++; renderGame(); return; }
-      player.score += phasePoints;
+      const q = state.questions[phaseIndex][questionIndex];
+      const isLastOfPhase = questionIndex === phase.count - 1;
+
+      state.players.forEach((player, i) => {
+        const answered = answers[i] !== undefined;
+        const correct = answered && answers[i] === q.a;
+        const kept = phase.type === 'intuition' ? (predictions[i] === answers[i]) : undefined;
+        const points = answered ? pointsFor(phase, correct, kept) : -1;
+        const priorAccum = accum[i];
+        accum[i] += points;
+
+        if (isLastOfPhase && doubles[i]) {
+          // Double or Nothing acts on everything the team earned this phase,
+          // including this question's points. Points already posted to the
+          // score in earlier questions of this phase, so only the difference
+          // between the new (doubled/zeroed) total and what's already posted
+          // gets added now.
+          const finalAccum = correct ? accum[i] * 2 : 0;
+          player.score += finalAccum - priorAccum;
+          player._lastDelta = finalAccum - priorAccum;
+          accum[i] = finalAccum;
+        } else {
+          player.score += points;
+          player._lastDelta = points;
+        }
+      });
+
+      revealed = true;
       saveState();
       renderPlayers();
-      $('hint').textContent = `${player.name} — փուլի արդյունք՝ ${phasePoints} միավոր`;
-      setTimeout(() => { if (phaseIndex < 3) { phaseIndex++; questionIndex = 0; phasePoints = 0; renderGame(); } }, 1300);
+      renderTeams();
+      $('hint').textContent = q.a ? `Ճիշտ պատասխանը՝ ${phase.type === 'lie' ? q.a + '-ին պնդումն է սուտ' : q.a}` : 'Ճիշտ պատասխանը դեռ լրացված չէ։';
+    }
+
+    function nextQuestion() {
+      if (!state.players.length) { $('hint').textContent = 'Սկզբում ավելացրեք գոնե մեկ թիմ։'; return; }
+      clearInterval(timer);
+      const phase = phases[phaseIndex];
+
+      if (questionIndex < phase.count - 1) {
+        questionIndex++;
+        resetRound();
+        renderGame();
+        return;
+      }
+
+      // Phase finished.
+      if (phaseIndex < phases.length - 1) {
+        phaseIndex++;
+        questionIndex = 0;
+        resetPhaseAccum();
+        resetRound();
+        document.querySelectorAll('[data-tab]').forEach(item => item.classList.toggle('active', Number(item.dataset.tab) === phaseIndex));
+        renderGame();
+      } else {
+        showFinal();
+      }
+    }
+
+    function showFinal() {
+      $('gameCard').classList.add('hidden');
+      $('finalCard').classList.remove('hidden');
+      const ranked = [...state.players].sort((a, b) => b.score - a.score);
+      $('leaderboard').innerHTML = ranked.map((player, index) =>
+        `<li>${index === 0 ? '🏆 ' : `${index + 1}. `}${player.name}<b>${player.score}</b></li>`
+      ).join('');
     }
 
     $('add').onclick = addPlayer;
-    $('remove').onclick = removePlayer;
     $('name').onkeydown = event => { if (event.key === 'Enter') addPlayer(); };
     $('save').onclick = () => {
       document.querySelectorAll('[data-field]').forEach(input => state.questions[input.dataset.phase][input.dataset.question][input.dataset.field] = input.value);
@@ -237,10 +422,47 @@
       renderQuestionEditor();
       $('hint').textContent = 'Հարցերը պահպանված են։';
     };
-    $('show').onclick = () => { $('hint').textContent = state.questions[phaseIndex][questionIndex].a ? `Ճիշտ պատասխան՝ ${state.questions[phaseIndex][questionIndex].a}` : 'Ճիշտ պատասխանը դեռ լրացված չէ։'; };
+    $('revealPrediction').onclick = () => { questionShown = true; renderGame(); };
+    $('reveal').onclick = reveal;
     $('next').onclick = nextQuestion;
+    $('restart').onclick = () => {
+      if (!confirm('Զրոյացնե՞լ բոլոր թիմերի միավորները և սկսել կրկին։')) return;
+      state.players.forEach(player => player.score = 0);
+      phaseIndex = 0; questionIndex = 0;
+      resetPhaseAccum(); resetRound();
+      saveState();
+      $('finalCard').classList.add('hidden');
+      $('gameCard').classList.remove('hidden');
+      document.querySelectorAll('[data-tab]').forEach(item => item.classList.toggle('active', Number(item.dataset.tab) === 0));
+      renderPlayers();
+      renderGame();
+    };
+    $('fullReset').onclick = () => {
+      if (!confirm('Հեռացնե՞լ բոլոր թիմերը և զրոյացնել ամեն ինչ։ Հարցերը կպահպանվեն։')) return;
+      state.players = [];
+      phaseIndex = 0; questionIndex = 0;
+      resetPhaseAccum(); resetRound();
+      saveState();
+      $('finalCard').classList.add('hidden');
+      $('gameCard').classList.remove('hidden');
+      document.querySelectorAll('[data-tab]').forEach(item => item.classList.toggle('active', Number(item.dataset.tab) === 0));
+      renderPlayers();
+      renderGame();
+    };
+
     $('tabs').innerHTML = phases.map((phase, index) => `<button class="${index === 0 ? 'active' : ''}" data-tab="${index}">${index + 1}. ${phase.title}</button>`).join('');
-    document.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => { phaseIndex = Number(button.dataset.tab); questionIndex = 0; phasePoints = 0; document.querySelectorAll('[data-tab]').forEach(item => item.classList.toggle('active', item === button)); renderGame(); });
+    document.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => {
+      phaseIndex = Number(button.dataset.tab);
+      questionIndex = 0;
+      resetPhaseAccum();
+      resetRound();
+      document.querySelectorAll('[data-tab]').forEach(item => item.classList.toggle('active', item === button));
+      $('finalCard').classList.add('hidden');
+      $('gameCard').classList.remove('hidden');
+      renderGame();
+    });
+
+    resetRound();
     renderQuestionEditor();
     renderPlayers();
     renderGame();
